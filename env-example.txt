@@ -1,9 +1,16 @@
-# Environment Configuration for ClassPass
+# Supabase Configuration for ClassPass
 
-# Local Development
-VITE_SERVER_URL=http://localhost:3001
+# Supabase Project Settings (get these from supabase.com dashboard)
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 
-# Production (replace with your deployed URL)
-# VITE_SERVER_URL=https://classpass-production.railway.app
-# VITE_SERVER_URL=https://classpass.onrender.com
-# VITE_SERVER_URL=https://your-app.herokuapp.com
+# Development Settings
+NODE_ENV=development
+
+# Production Settings
+# NODE_ENV=production
+
+# Instructions:
+# 1. Copy this file to .env
+# 2. Replace the URL and key with your actual Supabase project details
+# 3. Get these from: Supabase Dashboard → Settings → API

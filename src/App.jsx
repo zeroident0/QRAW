@@ -1,91 +1,11 @@
 import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
-import io from 'socket.io-client'
 import './App.css'
+import { useSupabaseSync } from './hooks/useSupabaseSync'
 
-// Socket.IO connection - configurable for different environments
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-const socket = io(SERVER_URL, {
-  transports: ['websocket', 'polling']
-});
-
-// Cross-device synchronization using Socket.IO
+// Cross-device synchronization using Supabase
 const useSocketSync = () => {
-  const [sessionData, setSessionData] = useState({
-    isActive: false,
-    currentCode: '',
-    timeLeft: 0,
-    attendanceList: [],
-    submittedIds: [],
-    currentClassName: ''
-  })
-
-  const [isConnected, setIsConnected] = useState(false)
-  const [autoExportMessage, setAutoExportMessage] = useState('')
-
-  useEffect(() => {
-    // Handle connection status
-    socket.on('connect', () => {
-      console.log('Connected to server')
-      setIsConnected(true)
-    })
-
-    socket.on('disconnect', () => {
-      console.log('Disconnected from server')
-      setIsConnected(false)
-    })
-
-    // Listen for session updates from server
-    socket.on('session-update', (data) => {
-      console.log('Session updated:', data)
-      setSessionData(data)
-    })
-
-    // Listen for auto-export notifications
-    socket.on('auto-export-complete', (data) => {
-      console.log('Auto-export completed:', data)
-      setAutoExportMessage(data.message)
-      // Clear message after 5 seconds
-      setTimeout(() => setAutoExportMessage(''), 5000)
-    })
-
-    socket.on('auto-export-error', (data) => {
-      console.error('Auto-export error:', data)
-      setAutoExportMessage(`❌ ${data.message}`)
-      // Clear message after 5 seconds
-      setTimeout(() => setAutoExportMessage(''), 5000)
-    })
-
-    // Cleanup on unmount
-    return () => {
-      socket.off('connect')
-      socket.off('disconnect')
-      socket.off('session-update')
-      socket.off('auto-export-complete')
-      socket.off('auto-export-error')
-    }
-  }, [])
-
-  const updateSessionData = (newData) => {
-    // Send updates to server instead of localStorage
-    if (newData.isActive !== undefined) {
-      if (newData.isActive) {
-        socket.emit('start-session', { className: newData.currentClassName })
-      } else {
-        socket.emit('end-session')
-      }
-    }
-  }
-
-  const submitAttendance = (studentId, studentName, enteredCode) => {
-    return new Promise((resolve) => {
-      socket.emit('submit-attendance', { studentId, studentName, enteredCode }, (response) => {
-        resolve(response)
-      })
-    })
-  }
-
-  return [sessionData, updateSessionData, submitAttendance, isConnected, autoExportMessage]
+  return useSupabaseSync()
 }
 
 // Utility functions for code generation

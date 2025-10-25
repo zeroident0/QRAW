@@ -10,16 +10,13 @@
     "preview": "vite preview",
     "server": "node server.js",
     "server:dev": "nodemon server.js",
-    "start": "node server-production.js"
+    "start": "node server.js",
+    "postbuild": "npm run build:server"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
+    "@supabase/supabase-js": "^2.76.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
-    "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

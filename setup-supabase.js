@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+console.log('🚀 ClassPass Supabase Setup Helper\n')
+
+console.log('📋 Next Steps:')
+console.log('1. Go to https://supabase.com')
+console.log('2. Sign up with GitHub (no credit card required)')
+console.log('3. Create new project: "classpass-attendance"')
+console.log('4. Wait for setup to complete (2-3 minutes)')
+console.log('5. Go to Settings → API')
+console.log('6. Copy your Project URL and Anon Key')
+console.log('7. Create .env file with:')
+console.log('   VITE_SUPABASE_URL=your-project-url')
+console.log('   VITE_SUPABASE_ANON_KEY=your-anon-key')
+console.log('8. Go to SQL Editor in Supabase dashboard')
+console.log('9. Copy and paste the contents of supabase-schema.sql')
+console.log('10. Click "Run" to create tables')
+console.log('11. Run: npm run dev')
+console.log('\n🎉 Your ClassPass system will be ready!')
+
+console.log('\n📁 Files created:')
+console.log('✅ src/lib/supabase.js - Supabase client')
+console.log('✅ src/hooks/useSupabaseSync.js - React hook')
+console.log('✅ supabase-schema.sql - Database schema')
+console.log('✅ SUPABASE-SETUP.md - Detailed guide')
+
+console.log('\n🔧 What changed:')
+console.log('✅ Removed Socket.IO dependency')
+console.log('✅ Updated App.jsx to use Supabase')
+console.log('✅ Added real-time subscriptions')
+console.log('✅ Added database schema')
+console.log('✅ Added security policies')
+
+console.log('\n🚀 Ready to deploy to Vercel/Netlify!')
+console.log('No server management needed - Supabase handles everything!')

@@ -2,9 +2,6 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 
 const app = express();
 const server = createServer(app);
@@ -128,38 +125,6 @@ const stopSessionTimer = () => {
   }
 };
 
-// Function to automatically export attendance data to desktop
-const autoExportToDesktop = (attendanceData) => {
-  try {
-    // Get desktop path
-    const desktopPath = path.join(os.homedir(), 'Desktop');
-    
-    // Create filename with timestamp
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const filename = `ClassPass_Attendance_${attendanceData.currentClassName}_${timestamp}.json`;
-    const filePath = path.join(desktopPath, filename);
-    
-    // Prepare export data
-    const exportData = {
-      class: attendanceData.currentClassName,
-      sessionDate: new Date().toLocaleDateString(),
-      sessionTime: new Date().toLocaleTimeString(),
-      totalStudents: attendanceData.attendanceList.length,
-      attendanceList: attendanceData.attendanceList,
-      exportedAt: new Date().toISOString()
-    };
-    
-    // Write to desktop
-    fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2));
-    
-    console.log(`✅ Attendance data automatically exported to desktop: ${filename}`);
-    return { success: true, filePath, filename };
-  } catch (error) {
-    console.error('❌ Error auto-exporting to desktop:', error);
-    return { success: false, error: error.message };
-  }
-};
-
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id, 'from:', socket.handshake.address);
@@ -189,32 +154,6 @@ io.on('connection', (socket) => {
   });
   
   socket.on('end-session', () => {
-    // Auto-export attendance data to desktop before ending session
-    if (sessionData.attendanceList.length > 0) {
-      const exportResult = autoExportToDesktop(sessionData);
-      if (exportResult.success) {
-        console.log(`📁 Attendance data saved to: ${exportResult.filePath}`);
-        // Notify all connected clients about the auto-export
-        io.emit('auto-export-complete', {
-          message: `Attendance data automatically exported to desktop: ${exportResult.filename}`,
-          filename: exportResult.filename,
-          totalStudents: sessionData.attendanceList.length
-        });
-      } else {
-        console.error('Failed to auto-export:', exportResult.error);
-        io.emit('auto-export-error', {
-          message: 'Failed to automatically export attendance data',
-          error: exportResult.error
-        });
-      }
-    } else {
-      console.log('No attendance data to export');
-      io.emit('auto-export-complete', {
-        message: 'Session ended with no attendance data to export',
-        totalStudents: 0
-      });
-    }
-    
     sessionData = {
       isActive: false,
       currentCode: '',

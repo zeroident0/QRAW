@@ -303,8 +303,17 @@ app.post('/api/export-attendance', (req, res) => {
   });
 });
 
+// Serve static files from the React build
+app.use(express.static('dist'));
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dist', 'index.html'));
+});
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`ClassPass server running on port ${PORT}`);
   console.log(`WebSocket server ready for connections`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
