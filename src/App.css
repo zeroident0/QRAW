@@ -529,6 +529,18 @@ body {
   background: #f0f0f0;
   cursor: not-allowed;
   color: #999999;
+  opacity: 0.7;
+}
+
+/* Enhanced disabled state for successful submission */
+.attendance-form.submitted .form-group input:disabled {
+  background: #e8f5e8;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.attendance-form.submitted .form-group label {
+  color: #2e7d32;
 }
 
 .submit-btn {
@@ -796,6 +808,18 @@ body {
   background: #f0f0f0;
   cursor: not-allowed;
   color: #999999;
+  opacity: 0.7;
+}
+
+/* Enhanced disabled state for successful submission */
+.attendance-form.submitted .validated-input:disabled {
+  background: #e8f5e8;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.attendance-form.submitted .input-label {
+  color: #2e7d32;
 }
 
 .validation-icon {

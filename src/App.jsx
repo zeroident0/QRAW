@@ -5,8 +5,8 @@ import { useSupabaseSync } from './hooks/useSupabaseSync'
 import ValidatedInput from './components/ValidatedInput'
 
 // Cross-device synchronization using Supabase
-const useSocketSync = () => {
-  return useSupabaseSync()
+const useSocketSync = (isProfessor = false) => {
+  return useSupabaseSync(isProfessor)
 }
 
 // Utility functions for code generation
@@ -171,12 +171,24 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [studentIdValidation, setStudentIdValidation] = useState({ isValid: false, message: '' })
   const [studentNameValidation, setStudentNameValidation] = useState({ isValid: false, message: '' })
+  const [hasSuccessfullySubmitted, setHasSuccessfullySubmitted] = useState(false)
 
   // Check if current student ID has already submitted
   const hasAlreadySubmitted = submittedIds.includes(studentId)
   
   // Check if form is valid for submission
   const isFormValid = studentIdValidation.isValid && studentNameValidation.isValid && enteredCode.trim() !== ''
+  
+  // Check if inputs should be disabled (either already submitted or successfully submitted)
+  const inputsDisabled = hasAlreadySubmitted || hasSuccessfullySubmitted || isSubmitting
+
+  // Reset submission state when session changes (new session starts)
+  useEffect(() => {
+    if (isActive && !hasAlreadySubmitted) {
+      setHasSuccessfullySubmitted(false)
+      setMessage('')
+    }
+  }, [isActive, hasAlreadySubmitted])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -207,9 +219,11 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
       const result = await onSubmitAttendance(studentId, studentName, enteredCode)
       if (result.success) {
         setMessage('✅ Attendance Recorded Successfully!')
-        setStudentId('')
-        setStudentName('')
-        setEnteredCode('')
+        setHasSuccessfullySubmitted(true)
+        // Don't clear the form fields - keep them visible but disabled
+        // setStudentId('')
+        // setStudentName('')
+        // setEnteredCode('')
         setStudentIdValidation({ isValid: false, message: '' })
         setStudentNameValidation({ isValid: false, message: '' })
       } else {
@@ -240,15 +254,15 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
           )}
         </div>
 
-        {hasAlreadySubmitted && studentId && (
+        {(hasAlreadySubmitted || hasSuccessfullySubmitted) && studentId && (
           <div className="already-submitted-warning">
-            <span className="warning-icon">⚠️</span>
-            <span>You have already submitted attendance for this session.</span>
+            <span className="warning-icon">✅</span>
+            <span>{hasSuccessfullySubmitted ? 'Attendance successfully recorded!' : 'You have already submitted attendance for this session.'}</span>
           </div>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="attendance-form">
+      <form onSubmit={handleSubmit} className={`attendance-form ${hasSuccessfullySubmitted ? 'submitted' : ''}`}>
         <ValidatedInput
           type="text"
           id="studentId"
@@ -257,7 +271,7 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
           onChange={setStudentId}
           onValidationChange={setStudentIdValidation}
           placeholder="Enter your student ID (e.g., ABC123)"
-          disabled={isSubmitting}
+          disabled={inputsDisabled}
           validationType="studentId"
         />
 
@@ -269,7 +283,7 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
           onChange={setStudentName}
           onValidationChange={setStudentNameValidation}
           placeholder="Enter your full name"
-          disabled={isSubmitting}
+          disabled={inputsDisabled}
           validationType="studentName"
         />
 
@@ -282,7 +296,7 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
             onChange={(e) => setEnteredCode(e.target.value.toUpperCase())}
             placeholder="Enter code from the board"
             required
-            disabled={isSubmitting}
+            disabled={inputsDisabled}
             className="validated-input"
           />
         </div>
@@ -290,9 +304,13 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
         <button 
           type="submit" 
           className="submit-btn"
-          disabled={isSubmitting || !isActive || hasAlreadySubmitted || !isFormValid}
+          disabled={inputsDisabled || !isActive || !isFormValid}
         >
-          {isSubmitting ? 'Submitting...' : hasAlreadySubmitted ? 'Already Submitted' : !isFormValid ? 'Fix Form Errors' : 'Submit Attendance'}
+          {isSubmitting ? 'Submitting...' : 
+           hasSuccessfullySubmitted ? 'Attendance Recorded!' : 
+           hasAlreadySubmitted ? 'Already Submitted' : 
+           !isFormValid ? 'Fix Form Errors' : 
+           'Submit Attendance'}
         </button>
       </form>
 
@@ -329,7 +347,7 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
 function App() {
   const [userRole, setUserRole] = useState(null) // null, 'professor', or 'student'
   const [professorPassword, setProfessorPassword] = useState('')
-  const [sessionData, updateSessionData, submitAttendanceToServer, isConnected, autoExportMessage] = useSocketSync()
+  const [sessionData, updateSessionData, submitAttendanceToServer, isConnected, autoExportMessage] = useSocketSync(userRole === 'professor')
 
   // Professor password (in real app, this would be server-side)
   const PROFESSOR_PASSWORD = 'professor123'

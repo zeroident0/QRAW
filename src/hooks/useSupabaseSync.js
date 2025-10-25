@@ -13,7 +13,7 @@ const generateAttendanceCode = () => {
 }
 
 // Supabase-based session synchronization
-export const useSupabaseSync = () => {
+export const useSupabaseSync = (isProfessor = false) => {
   const [sessionData, setSessionData] = useState({
     isActive: false,
     currentCode: '',
@@ -117,40 +117,30 @@ export const useSupabaseSync = () => {
     // Debug: Log current session data
     console.log('Initial session data loaded:', sessionData)
 
-    // Countdown timer
+    // Only professors update the timer - students just display the current value
     const timerInterval = setInterval(async () => {
-      setSessionData(prev => {
-        if (prev.isActive && prev.timeLeft > 0) {
-          const newTimeLeft = prev.timeLeft - 1
-          
-          // If timer reaches 0, generate new code and reset timer
-          if (newTimeLeft <= 0) {
-            const newCode = generateAttendanceCode()
-            // Update session in database with new code and reset timer
-            db.updateSession({
-              current_code: newCode,
-              time_left: 300
-            })
+      if (isProfessor) {
+        try {
+          const session = await db.getCurrentSession()
+          if (session && session.is_active && session.time_left > 0) {
+            const newTimeLeft = session.time_left - 1
             
-            return {
-              ...prev,
-              timeLeft: 300,
-              currentCode: newCode
+            if (newTimeLeft <= 0) {
+              // Generate new code and reset timer
+              const newCode = generateAttendanceCode()
+              await db.updateSession({
+                current_code: newCode,
+                time_left: 300
+              })
+            } else {
+              // Update timer
+              await db.updateSession({ time_left: newTimeLeft })
             }
           }
-          
-          // Update timer in database every 10 seconds to avoid too many DB calls
-          if (newTimeLeft % 10 === 0) {
-            db.updateSession({ time_left: newTimeLeft })
-          }
-          
-          return {
-            ...prev,
-            timeLeft: newTimeLeft
-          }
+        } catch (error) {
+          console.log('Timer update error:', error)
         }
-        return prev
-      })
+      }
     }, 1000)
 
     // Cleanup
@@ -213,3 +203,4 @@ export const useSupabaseSync = () => {
 
   return [sessionData, updateSessionData, submitAttendance, isConnected, autoExportMessage]
 }
+
