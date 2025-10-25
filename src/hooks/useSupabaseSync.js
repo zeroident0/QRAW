@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase, db } from '../lib/supabase.js'
 
+// Generate attendance code (same as in App.jsx)
+const colors = ['RED', 'BLUE', 'GREEN', 'YELLOW', 'ORANGE', 'PURPLE', 'PINK', 'BROWN', 'BLACK', 'WHITE']
+const nouns = ['CAT', 'DOG', 'FOX', 'BEAR', 'LION', 'TIGER', 'EAGLE', 'SHARK', 'DONUT', 'PIZZA', 'CAKE', 'STAR', 'MOON', 'SUN', 'TREE', 'ROCK', 'BIRD', 'FISH', 'CAR', 'BIKE']
+
+const generateAttendanceCode = () => {
+  const color = colors[Math.floor(Math.random() * colors.length)]
+  const number = Math.floor(Math.random() * 100) + 1
+  const noun = nouns[Math.floor(Math.random() * nouns.length)]
+  return `${color}-${number}-${noun}`
+}
+
 // Supabase-based session synchronization
 export const useSupabaseSync = () => {
   const [sessionData, setSessionData] = useState({
@@ -64,8 +75,48 @@ export const useSupabaseSync = () => {
       loadCurrentSession()
     })
 
+    // Debug: Log current session data
+    console.log('Initial session data loaded:', sessionData)
+
+    // Countdown timer
+    const timerInterval = setInterval(async () => {
+      setSessionData(prev => {
+        if (prev.isActive && prev.timeLeft > 0) {
+          const newTimeLeft = prev.timeLeft - 1
+          
+          // If timer reaches 0, generate new code and reset timer
+          if (newTimeLeft <= 0) {
+            const newCode = generateAttendanceCode()
+            // Update session in database with new code and reset timer
+            db.updateSession({
+              current_code: newCode,
+              time_left: 300
+            })
+            
+            return {
+              ...prev,
+              timeLeft: 300,
+              currentCode: newCode
+            }
+          }
+          
+          // Update timer in database every 10 seconds to avoid too many DB calls
+          if (newTimeLeft % 10 === 0) {
+            db.updateSession({ time_left: newTimeLeft })
+          }
+          
+          return {
+            ...prev,
+            timeLeft: newTimeLeft
+          }
+        }
+        return prev
+      })
+    }, 1000)
+
     // Cleanup
     return () => {
+      clearInterval(timerInterval)
       sessionSubscription.unsubscribe()
       attendanceSubscription.unsubscribe()
     }
