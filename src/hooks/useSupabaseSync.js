@@ -69,10 +69,10 @@ export const useSupabaseSync = () => {
       loadCurrentSession()
     })
 
-    // Subscribe to attendance changes
+    // Subscribe to attendance changes (listen to all attendance changes)
     const attendanceSubscription = db.subscribeToAttendance(null, (payload) => {
       console.log('Attendance updated:', payload)
-      loadCurrentSession()
+      loadCurrentSession() // Reload session data when any attendance changes
     })
 
     // Debug: Log current session data
@@ -149,6 +149,8 @@ export const useSupabaseSync = () => {
   }
 
   const submitAttendance = async (studentId, studentName, enteredCode) => {
+    console.log('Submitting attendance:', { studentId, studentName, enteredCode, sessionId: sessionData.sessionId })
+    
     if (!sessionData.sessionId) {
       return { success: false, error: 'No active session' }
     }
@@ -157,7 +159,7 @@ export const useSupabaseSync = () => {
     const ipAddress = 'unknown' // Would need server-side detection
     const deviceFingerprint = navigator.userAgent.slice(0, 50)
 
-    return await db.submitAttendance(
+    const result = await db.submitAttendance(
       sessionData.sessionId,
       studentId,
       studentName,
@@ -165,6 +167,9 @@ export const useSupabaseSync = () => {
       ipAddress,
       deviceFingerprint
     )
+    
+    console.log('Attendance submission result:', result)
+    return result
   }
 
   return [sessionData, updateSessionData, submitAttendance, isConnected, autoExportMessage]

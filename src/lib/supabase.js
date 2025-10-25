@@ -93,7 +93,33 @@ export const db = {
   },
 
   async submitAttendance(sessionId, studentId, studentName, enteredCode, ipAddress, deviceFingerprint) {
-    // First check if student already submitted
+    // First get the current session to validate the code
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('current_code, is_active, time_left')
+      .eq('id', sessionId)
+      .single()
+
+    if (sessionError || !session) {
+      return { success: false, error: 'Session not found' }
+    }
+
+    // Check if session is active
+    if (!session.is_active) {
+      return { success: false, error: 'Session is not active' }
+    }
+
+    // Check if time has expired
+    if (session.time_left <= 0) {
+      return { success: false, error: 'Session has expired' }
+    }
+
+    // Validate the entered code
+    if (enteredCode !== session.current_code) {
+      return { success: false, error: 'Invalid code. Please check the board and try again.' }
+    }
+
+    // Check if student already submitted
     const { data: existing } = await supabase
       .from('attendance')
       .select('id')
