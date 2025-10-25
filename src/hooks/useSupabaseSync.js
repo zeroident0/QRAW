@@ -117,13 +117,20 @@ export const useSupabaseSync = (isProfessor = false) => {
     // Debug: Log current session data
     console.log('Initial session data loaded:', sessionData)
 
-    // Only professors update the timer - students just display the current value
+    // Timer for countdown - update both database and local state
     const timerInterval = setInterval(async () => {
       if (isProfessor) {
         try {
           const session = await db.getCurrentSession()
+          console.log('🕐 Professor timer check:', { 
+            isActive: session?.is_active, 
+            timeLeft: session?.time_left,
+            isProfessor 
+          })
+          
           if (session && session.is_active && session.time_left > 0) {
             const newTimeLeft = session.time_left - 1
+            console.log('🕐 Professor updating timer:', session.time_left, '->', newTimeLeft)
             
             if (newTimeLeft <= 0) {
               // Generate new code and reset timer
@@ -132,13 +139,41 @@ export const useSupabaseSync = (isProfessor = false) => {
                 current_code: newCode,
                 time_left: 300
               })
+              
+              // Update local state immediately
+              setSessionData(prev => ({
+                ...prev,
+                timeLeft: 300,
+                currentCode: newCode
+              }))
+              console.log('🕐 Timer reset to 300 with new code:', newCode)
             } else {
-              // Update timer
+              // Update timer in database
               await db.updateSession({ time_left: newTimeLeft })
+              
+              // Update local state immediately
+              setSessionData(prev => ({
+                ...prev,
+                timeLeft: newTimeLeft
+              }))
             }
           }
         } catch (error) {
           console.log('Timer update error:', error)
+        }
+      } else {
+        // For students, just update local state from database
+        try {
+          const session = await db.getCurrentSession()
+          if (session && session.is_active) {
+            setSessionData(prev => ({
+              ...prev,
+              timeLeft: session.time_left,
+              currentCode: session.current_code
+            }))
+          }
+        } catch (error) {
+          console.log('Student timer sync error:', error)
         }
       }
     }, 1000)
@@ -152,9 +187,14 @@ export const useSupabaseSync = (isProfessor = false) => {
   }, [])
 
   const updateSessionData = async (newData) => {
+    console.log('🔄 updateSessionData called:', { newData, isProfessor })
+    
     if (newData.isActive !== undefined) {
       if (newData.isActive) {
+        console.log('🔄 Creating new session...')
         const session = await db.createSession(newData.currentClassName)
+        console.log('🔄 Session created:', session)
+        
         if (session) {
           setSessionData(prev => ({
             ...prev,
@@ -164,8 +204,16 @@ export const useSupabaseSync = (isProfessor = false) => {
             currentClassName: session.class_name,
             sessionId: session.id
           }))
+          console.log('🔄 Session data updated with:', {
+            isActive: true,
+            currentCode: session.current_code,
+            timeLeft: session.time_left,
+            currentClassName: session.class_name,
+            sessionId: session.id
+          })
         }
       } else {
+        console.log('🔄 Ending session...')
         await db.endSession()
         setSessionData(prev => ({
           ...prev,
