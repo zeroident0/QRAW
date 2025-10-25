@@ -93,6 +93,42 @@ export const db = {
   },
 
   async submitAttendance(sessionId, studentId, studentName, enteredCode, ipAddress, deviceFingerprint) {
+    // Input validation
+    if (!studentId || !studentName || !enteredCode) {
+      return { success: false, error: 'All fields are required' }
+    }
+
+    // Rate limiting: Check for recent submissions from same IP/device (within last 30 seconds)
+    const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString()
+    const { data: recentSubmissions } = await supabase
+      .from('attendance')
+      .select('id')
+      .eq('session_id', sessionId)
+      .or(`ip_address.eq.${ipAddress},device_fingerprint.eq.${deviceFingerprint}`)
+      .gte('timestamp', thirtySecondsAgo)
+
+    if (recentSubmissions && recentSubmissions.length > 0) {
+      return { 
+        success: false, 
+        error: 'Rate limit exceeded. Please wait 30 seconds before submitting again.' 
+      }
+    }
+
+    // Sanitize inputs
+    const sanitizedStudentId = studentId.trim().toUpperCase()
+    const sanitizedStudentName = studentName.trim()
+    const sanitizedCode = enteredCode.trim().toUpperCase()
+
+    // Validate student ID format (alphanumeric, 3-20 characters)
+    if (!/^[A-Z0-9]{3,20}$/.test(sanitizedStudentId)) {
+      return { success: false, error: 'Invalid student ID format. Use 3-20 alphanumeric characters.' }
+    }
+
+    // Validate student name format (letters, spaces, hyphens, apostrophes, 2-50 characters)
+    if (!/^[A-Za-z\s\-']{2,50}$/.test(sanitizedStudentName)) {
+      return { success: false, error: 'Invalid name format. Use 2-50 letters, spaces, hyphens, or apostrophes.' }
+    }
+
     // First get the current session to validate the code
     const { data: session, error: sessionError } = await supabase
       .from('sessions')
@@ -115,31 +151,45 @@ export const db = {
     }
 
     // Validate the entered code
-    if (enteredCode !== session.current_code) {
+    if (sanitizedCode !== session.current_code) {
       return { success: false, error: 'Invalid code. Please check the board and try again.' }
     }
 
     // Check if student already submitted
     const { data: existing } = await supabase
       .from('attendance')
-      .select('id')
+      .select('id, student_name')
       .eq('session_id', sessionId)
-      .eq('student_id', studentId)
+      .eq('student_id', sanitizedStudentId)
       .single()
 
     if (existing) {
+      // If student ID exists but with different name, this is a security violation
+      if (existing.student_name !== sanitizedStudentName) {
+        return { 
+          success: false, 
+          error: 'Security violation: Student ID already registered with different name. Please contact the professor.' 
+        }
+      }
       return { success: false, error: 'Student ID already submitted' }
     }
 
-    // Check if name already exists
+    // Check if name already exists with different ID
     const { data: nameExists } = await supabase
       .from('attendance')
-      .select('id')
+      .select('id, student_id')
       .eq('session_id', sessionId)
-      .eq('student_name', studentName)
+      .eq('student_name', sanitizedStudentName)
       .single()
 
     if (nameExists) {
+      // If name exists but with different ID, this is a security violation
+      if (nameExists.student_id !== sanitizedStudentId) {
+        return { 
+          success: false, 
+          error: 'Security violation: Student name already registered with different ID. Please contact the professor.' 
+        }
+      }
       return { success: false, error: 'Student name already registered' }
     }
 
@@ -148,8 +198,8 @@ export const db = {
       .from('attendance')
       .insert({
         session_id: sessionId,
-        student_id: studentId,
-        student_name: studentName,
+        student_id: sanitizedStudentId,
+        student_name: sanitizedStudentName,
         ip_address: ipAddress,
         device_fingerprint: deviceFingerprint
       })
@@ -166,23 +216,35 @@ export const db = {
 
   // Real-time subscriptions
   subscribeToSession(callback) {
-    return supabase
+    console.log('🔗 Setting up session subscription...')
+    const subscription = supabase
       .channel('session-updates')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'sessions' },
         callback
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('🔗 Session subscription status:', status)
+      })
+    
+    console.log('🔗 Session subscription created:', subscription)
+    return subscription
   },
 
   subscribeToAttendance(sessionId, callback) {
-    return supabase
+    console.log('🔗 Setting up attendance subscription...')
+    const subscription = supabase
       .channel('attendance-updates')
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'attendance' },
         callback
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('🔗 Attendance subscription status:', status)
+      })
+    
+    console.log('🔗 Attendance subscription created:', subscription)
+    return subscription
   }
 }
 

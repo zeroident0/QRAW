@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import './App.css'
 import { useSupabaseSync } from './hooks/useSupabaseSync'
+import ValidatedInput from './components/ValidatedInput'
 
 // Cross-device synchronization using Supabase
 const useSocketSync = () => {
@@ -168,9 +169,14 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
   const [enteredCode, setEnteredCode] = useState('')
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [studentIdValidation, setStudentIdValidation] = useState({ isValid: false, message: '' })
+  const [studentNameValidation, setStudentNameValidation] = useState({ isValid: false, message: '' })
 
   // Check if current student ID has already submitted
   const hasAlreadySubmitted = submittedIds.includes(studentId)
+  
+  // Check if form is valid for submission
+  const isFormValid = studentIdValidation.isValid && studentNameValidation.isValid && enteredCode.trim() !== ''
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -189,6 +195,11 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
       return
     }
 
+    if (!isFormValid) {
+      setMessage('❌ Please fix the form errors before submitting.')
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
 
@@ -199,6 +210,8 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
         setStudentId('')
         setStudentName('')
         setEnteredCode('')
+        setStudentIdValidation({ isValid: false, message: '' })
+        setStudentNameValidation({ isValid: false, message: '' })
       } else {
         setMessage(`❌ ${result.error}`)
       }
@@ -236,31 +249,29 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
       </div>
 
       <form onSubmit={handleSubmit} className="attendance-form">
-        <div className="form-group">
-          <label htmlFor="studentId">Student ID:</label>
-          <input
-            type="text"
-            id="studentId"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            placeholder="Enter your student ID"
-            required
-            disabled={isSubmitting}
-          />
-        </div>
+        <ValidatedInput
+          type="text"
+          id="studentId"
+          label="Student ID"
+          value={studentId}
+          onChange={setStudentId}
+          onValidationChange={setStudentIdValidation}
+          placeholder="Enter your student ID (e.g., ABC123)"
+          disabled={isSubmitting}
+          validationType="studentId"
+        />
 
-        <div className="form-group">
-          <label htmlFor="studentName">Full Name:</label>
-          <input
-            type="text"
-            id="studentName"
-            value={studentName}
-            onChange={(e) => setStudentName(e.target.value)}
-            placeholder="Enter your full name"
-            required
-            disabled={isSubmitting}
-          />
-        </div>
+        <ValidatedInput
+          type="text"
+          id="studentName"
+          label="Full Name"
+          value={studentName}
+          onChange={setStudentName}
+          onValidationChange={setStudentNameValidation}
+          placeholder="Enter your full name"
+          disabled={isSubmitting}
+          validationType="studentName"
+        />
 
         <div className="form-group">
           <label htmlFor="attendanceCode">Attendance Code:</label>
@@ -272,15 +283,16 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
             placeholder="Enter code from the board"
             required
             disabled={isSubmitting}
+            className="validated-input"
           />
         </div>
 
         <button 
           type="submit" 
           className="submit-btn"
-          disabled={isSubmitting || !isActive || hasAlreadySubmitted}
+          disabled={isSubmitting || !isActive || hasAlreadySubmitted || !isFormValid}
         >
-          {isSubmitting ? 'Submitting...' : hasAlreadySubmitted ? 'Already Submitted' : 'Submit Attendance'}
+          {isSubmitting ? 'Submitting...' : hasAlreadySubmitted ? 'Already Submitted' : !isFormValid ? 'Fix Form Errors' : 'Submit Attendance'}
         </button>
       </form>
 
@@ -294,10 +306,20 @@ const StudentForm = ({ onSubmitAttendance, currentCode, timeLeft, isActive, subm
         <h3>Instructions:</h3>
         <ol>
           <li>Look at the smart board for the current attendance code</li>
-          <li>Enter your Student ID, Full Name, and the code exactly as shown</li>
+          <li>Enter your Student ID (3-20 characters, uppercase letters and numbers only)</li>
+          <li>Enter your Full Name (2-50 characters, letters, spaces, hyphens, and apostrophes only)</li>
+          <li>Enter the attendance code exactly as shown on the board</li>
           <li>Submit before the timer runs out</li>
           <li>You can only submit once per session</li>
         </ol>
+        <div className="format-requirements">
+          <h4>Format Requirements:</h4>
+          <ul>
+            <li><strong>Student ID:</strong> 3-20 characters, uppercase letters (A-Z) and numbers (0-9) only</li>
+            <li><strong>Full Name:</strong> 2-50 characters, letters, spaces, hyphens (-), and apostrophes (') only</li>
+            <li><strong>Attendance Code:</strong> Enter exactly as shown on the board</li>
+          </ul>
+        </div>
       </div>
     </div>
   )

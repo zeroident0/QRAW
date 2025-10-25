@@ -31,9 +31,21 @@ export const useSupabaseSync = () => {
     // Check connection
     const checkConnection = async () => {
       try {
+        console.log('🔍 Checking Supabase connection...')
+        console.log('🔍 Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
+        console.log('🔍 Supabase Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
+        
         const { data, error } = await supabase.from('sessions').select('id').limit(1)
+        console.log('🔍 Connection test result:', { data, error })
         setIsConnected(!error)
+        
+        if (error) {
+          console.error('❌ Supabase connection failed:', error)
+        } else {
+          console.log('✅ Supabase connection successful')
+        }
       } catch (err) {
+        console.error('❌ Supabase connection error:', err)
         setIsConnected(false)
       }
     }
@@ -65,15 +77,42 @@ export const useSupabaseSync = () => {
 
     // Subscribe to session changes
     const sessionSubscription = db.subscribeToSession((payload) => {
-      console.log('Session updated:', payload)
+      console.log('🔔 Session updated:', payload)
       loadCurrentSession()
     })
 
     // Subscribe to attendance changes (listen to all attendance changes)
     const attendanceSubscription = db.subscribeToAttendance(null, (payload) => {
-      console.log('Attendance updated:', payload)
+      console.log('📝 Attendance updated:', payload)
+      console.log('📝 Payload details:', JSON.stringify(payload, null, 2))
       loadCurrentSession() // Reload session data when any attendance changes
     })
+
+    // Test subscription status
+    console.log('🔗 Setting up real-time subscriptions...')
+    console.log('🔗 Session subscription:', sessionSubscription)
+    console.log('🔗 Attendance subscription:', attendanceSubscription)
+    
+    // Test if subscriptions are working by checking their status
+    setTimeout(() => {
+      console.log('🔍 Checking subscription status after 2 seconds...')
+      console.log('🔍 Session subscription state:', sessionSubscription?.state)
+      console.log('🔍 Attendance subscription state:', attendanceSubscription?.state)
+      
+      // Test real-time by manually inserting a test record
+      console.log('🧪 Testing real-time by inserting test record...')
+      supabase.from('attendance').insert({
+        session_id: '00000000-0000-0000-0000-000000000000', // dummy ID
+        student_id: 'TEST123',
+        student_name: 'Test Student',
+        ip_address: 'test',
+        device_fingerprint: 'test'
+      }).then(result => {
+        console.log('🧪 Test insert result:', result)
+      }).catch(err => {
+        console.log('🧪 Test insert error (expected):', err)
+      })
+    }, 2000)
 
     // Debug: Log current session data
     console.log('Initial session data loaded:', sessionData)
